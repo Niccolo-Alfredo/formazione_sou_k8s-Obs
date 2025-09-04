@@ -404,7 +404,7 @@ Per creare dashboard efficaci:
 
 Per configurare questa dashboard sono state utilizzate le 4 metriche disponibili. Attraverso delle query PromQL è stato possibile recuperare sia i semplici valori assoluti che trasformarti attraverso le varie funzioni che Prometheus mette a disposizione. Quindi, da Grafana si è creata una board con vari line chart e gauge counter del rate di queste metriche. Qui sotto il risultato:
 
-![Screenshot_20250903_144112.png](attachment:f7a9477a-bfe0-4379-a0d3-def20cfd97ce:107fa481-9fb4-4353-b52a-f0cda3d586e7.png)
+![Dashboard di esempio](image_2025-09-04_15-53-57.png)
 
 ## Risoluzione Problemi Comuni
 
