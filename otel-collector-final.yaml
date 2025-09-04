@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: monitoring
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+      # Receiver per le metriche interne del collector
+      prometheus/internal:
+        config:
+          scrape_configs:
+          - job_name: 'otel-collector-internal'
+            scrape_interval: 10s
+            static_configs:
+            - targets: ['0.0.0.0:8888']
+
+    exporters:
+      prometheus:
+        endpoint: "0.0.0.0:9464"
+        send_timestamps: true
+        metric_expiration: 180m
+        resource_to_telemetry_conversion:
+          enabled: true
+
+    processors:
+      batch:
+
+    extensions:
+      health_check:
+        endpoint: "0.0.0.0:13133"
+
+    service:
+      extensions: [health_check]
+      pipelines:
+        metrics:
+          receivers: [otlp, prometheus/internal]
+          processors: [batch]
+          exporters: [prometheus]
+      telemetry:
+        metrics:
+          address: "0.0.0.0:8888"
+          level: detailed
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.109.0
+          args: 
+            - "--config=/etc/otel/config.yaml"
+            - "--feature-gates=-component.UseLocalHostAsDefaultHost"
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+            - name: metrics
+              containerPort: 9464
+            - name: telemetry
+              containerPort: 8888
+            - name: health
+              containerPort: 13133
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          volumeMounts:
+            - name: otel-config-vol
+              mountPath: /etc/otel
+      volumes:
+        - name: otel-config-vol
+          configMap:
+            name: otel-collector-config
+            items:
+              - key: otel-collector-config.yaml
+                path: config.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+    - name: metrics
+      port: 9464
+      targetPort: 9464
+    - name: telemetry
+      port: 8888
+      targetPort: 8888
+    - name: health
+      port: 13133
+      targetPort: 13133

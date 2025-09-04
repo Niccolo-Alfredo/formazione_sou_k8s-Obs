@@ -1,0 +1,69 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-hello-world
+  namespace: monitoring
+  labels:
+    app: flask-hello-world
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask-hello-world
+  template:
+    metadata:
+      labels:
+        app: flask-hello-world
+    spec:
+      containers:
+        - name: flask-app
+          image: my-python-web-app:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.monitoring.svc.cluster.local:4317"
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-hello-world
+  namespace: monitoring
+spec:
+  selector:
+    app: flask-hello-world
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flask-app-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: flask-app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: flask-hello-world
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - flask-app.example.com
+      secretName: flask-app-tls
