@@ -1,0 +1,24 @@
+Quello che è stato fatto per creare l'immagine dell'app è
+1) creare l'app
+2) creare il dockerfile
+3) i requirements per la build
+4) buildato l'app con 
+
+docker build -t my-python-web-app:1.0.0 .
+
+5) Creato un archivio 
+
+docker save my-python-web-app:1.0.0 > my-app.tar
+
+6) Caricato l'archivio nel cluster kind con 
+
+kind load image-archive my-app.tar --name obs-cluster
+
+Questo ci permette di non passare sia per docker hub sia per jenkins.
+Ora semplicemente andiamo a creare dei manifest e poi ci basterà 
+applicare il manifest per ottenere l'app sul cluster.
+
+Per vedere se l'immagine è stata caricata possiamo vedere tra le immagini
+che sono nel control-plane con 
+
+docker exec -it obs-cluster-control-plane crictl images
